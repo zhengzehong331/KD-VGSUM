@@ -74,6 +74,8 @@ if __name__ == '__main__':
                         default=1, help='do validation for each epoch')
     parser.add_argument('-img_lr_factor', type=float, default=1,
                         help='the learning rate for visual guidance part will times this number')
+    parser.add_argument('-input_size', type=int, default=224,
+                        help='input size')
 
     # About cross-modal attention and fusion
     parser.add_argument('-use_img_trans', action='store_true',

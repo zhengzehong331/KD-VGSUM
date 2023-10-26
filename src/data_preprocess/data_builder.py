@@ -1,3 +1,5 @@
+import io
+import whisper
 from torch.utils.data import Dataset, DataLoader
 from transformers import BartTokenizer, T5Tokenizer
 from tqdm import tqdm
@@ -5,6 +7,12 @@ import pytorch_lightning as pl
 import torch
 import numpy as np
 from utils.utils import pad_sents, get_mask
+import csv
+from mmcv.fileio import FileClient
+from zhconv import convert
+
+
+# from .pipeline import Compose
 
 
 class OurDataset(Dataset):
@@ -12,6 +20,11 @@ class OurDataset(Dataset):
 
     def __init__(self, args, mode):
         self.args = args
+        self.start_index = 1
+        self.whisper_model = whisper.load_model("base")
+
+        # self.pipeline = Compose(pipeline)
+
         # initial tokenizer and text
         if 't5' in self.args.model:
             self.tokenizer = T5Tokenizer.from_pretrained('t5-base')
@@ -27,12 +40,15 @@ class OurDataset(Dataset):
         if mode == 'test':
             src_path = args.test_src_path
             tgt_path = args.test_tgt_path
-        self.src = self.file_reader(src_path)
-        self.tgt = self.file_reader(tgt_path)
-        self.data_id = [item.split()[0] for item in self.tgt]
-        self.src = [" ".join(item.split()[1:]) for item in self.src]
-        self.tgt = [" ".join(item.split()[1:]) for item in self.tgt]
-        # get tokenized test
+
+        self.lines = self.file_reader(
+            '/home/zehong/Desktop/NLP/VG-SUM/data/DemoSum.csv')
+        self.tgt = [line["tgt"] for line in self.lines]
+        print('==================== Transcription {} video ======================'.format(mode))
+        # self.src = [self.transcription(line["video_path"])
+        #             for line in self.lines]
+        self.src = self.transcription(self.lines)
+
         print('==================== Tokening {} set ======================'.format(mode))
         self.src_ids = self.tokenize(self.src)
         self.tgt_ids = self.tokenize(self.tgt)
@@ -49,9 +65,33 @@ class OurDataset(Dataset):
         return tokenized_text
 
     def file_reader(self, file_path):
-        file = open(file_path, 'r')
-        lines = [item.strip('\n') for item in file.readlines()]
+        # file = open(file_path, 'r')
+        # lines = [item.strip('\n') for item in file.readlines()]
+        # return lines
+        lines = []
+        with open(file_path, 'r') as fin:
+            csv_reader = csv.reader(fin)
+            next(csv_reader, None)
+            for line in csv_reader:
+                if line is not None:
+                    data_ids = line[0]
+                    tgt = line[1]
+                    video_path = line[2]
+                lines.append(dict(data_ids=data_ids,
+                                  tgt=tgt, video_path=video_path))
         return lines
+
+    def transcription(self, path):
+        """进行视频语音提取操作，并生成字幕
+        """
+        src = []
+        for line in tqdm(self.lines):
+            path = "data/"+line["video_path"]
+            tran = self.whisper_model.transcribe(
+                path, fp16=False, language='Chinese')
+            ch_transcription = convert(tran["text"], 'zh-cn')
+            src.append(ch_transcription)
+        return src
 
     def collate_fn(self, data):
         if self.args.model == 'text_only_bart':
@@ -203,6 +243,7 @@ class OurDataset(Dataset):
 class SummaryDataModule(pl.LightningDataModule):
     def __init__(self, args):
         super().__init__()
+        # scale_resize = int(256 / 224 * args.input_size)
         train_set = OurDataset(args, 'train')
         val_set = OurDataset(args, 'val')
         test_set = OurDataset(args, 'test')
