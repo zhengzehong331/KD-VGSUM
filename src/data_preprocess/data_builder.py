@@ -6,6 +6,8 @@ from tqdm import tqdm
 import pytorch_lightning as pl
 import torch
 import numpy as np
+from mmcv.parallel import DataContainer as DC
+from data_preprocess.video_preprocess import Collect, ColorJitter, DecordDecode, DecordInit, Flip, FormatShape, GrayScale, MultiScaleCrop, Normalize, Resize, SampleFrames, ToTensor
 from utils.utils import pad_sents, get_mask
 import csv
 from mmcv.fileio import FileClient
@@ -13,6 +15,10 @@ from zhconv import convert
 
 
 # from .pipeline import Compose
+
+# 配置图像归一化参数
+img_norm_cfg = dict(
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_bgr=False)
 
 
 class OurDataset(Dataset):
@@ -44,14 +50,19 @@ class OurDataset(Dataset):
         self.lines = self.file_reader(
             '/home/zehong/Desktop/NLP/VG-SUM/data/DemoSum.csv')
         self.tgt = [line["tgt"] for line in self.lines]
+        self.data_id = [line["data_id"] for line in self.lines]
         print('==================== Transcription {} video ======================'.format(mode))
-        # self.src = [self.transcription(line["video_path"])
-        #             for line in self.lines]
         self.src = self.transcription(self.lines)
-
         print('==================== Tokening {} set ======================'.format(mode))
         self.src_ids = self.tokenize(self.src)
         self.tgt_ids = self.tokenize(self.tgt)
+
+        if self.args.model == 'multi_modal_bart':
+            print(
+                '==================== Video Prepreocess {} set ======================'.format(mode))
+            self.visual_ids = self.visual_pre(self.lines)
+        else:
+            self.visual_ids = None
 
     def __len__(self):
         return len(self.src)
@@ -65,19 +76,16 @@ class OurDataset(Dataset):
         return tokenized_text
 
     def file_reader(self, file_path):
-        # file = open(file_path, 'r')
-        # lines = [item.strip('\n') for item in file.readlines()]
-        # return lines
         lines = []
         with open(file_path, 'r') as fin:
             csv_reader = csv.reader(fin)
             next(csv_reader, None)
             for line in csv_reader:
                 if line is not None:
-                    data_ids = line[0]
+                    data_id = line[0]
                     tgt = line[1]
                     video_path = line[2]
-                lines.append(dict(data_ids=data_ids,
+                lines.append(dict(data_id=data_id,
                                   tgt=tgt, video_path=video_path))
         return lines
 
@@ -92,6 +100,60 @@ class OurDataset(Dataset):
             ch_transcription = convert(tran["text"], 'zh-cn')
             src.append(ch_transcription)
         return src
+
+    def visual_pre(self, path):
+        """视频预处理
+        """
+        scale_resize = int(256 / 224 * 224)
+        vis_feature = []
+        for line in tqdm(self.lines):
+            result = {}
+            result["filepath"] = line["video_path"]
+            result["start_index"] = 1
+            result["modality"] = 'RGB'
+
+            # 初始化video_reader
+            vedio_reader = DecordInit()
+            vedio_reader(results=result)
+            # 采样帧处理
+            sample_frames = SampleFrames(
+                clip_len=1, frame_interval=1, num_clips=8, test_mode=False)
+            sample_frames(results=result)
+            # 使用decord对视频进行解码准备
+            decord_decode = DecordDecode()
+            decord_decode(results=result)
+            # 重新统一图像尺寸 这里将1280*720缩放为265*455（可以通过动态调整长宽缩放，从而调整缩放比例）
+            resize = Resize(scale=(-1, scale_resize))
+            resize(results=result)
+            # 用一个随机选择的比例列表来裁剪图像。
+            scale_crop = MultiScaleCrop(input_size=224,
+                                        scales=(1, 0.875, 0.75, 0.66),
+                                        random_crop=False,
+                                        max_wh_scale_gap=1)
+            scale_crop(results=result)
+            # 以一定的概率翻转输入的图像
+            filp = Flip(flip_ratio=0.5)
+            filp(results=result)
+            # ColorJitter是PyTorch中的一种数据增强方法，可用于对图像进行随机颜色扭曲，从而增强模型的鲁棒性和泛化能力。
+            colorJitter = ColorJitter(p=0.9)
+            colorJitter(results=result)
+            # 将彩色图像转换为灰度图像
+            gary_scale = GrayScale(p=0.2)
+            gary_scale(results=result)
+            # 正则化
+            noprmalize = Normalize(**img_norm_cfg)
+            noprmalize(results=result)
+            # 将图像格式变换为最终的输入格式
+            format_shape = FormatShape(input_format='NCHW')
+            format_shape(results=result)
+            # 可以理解成是一个监控器,可以监控读取的信息,在key中填入所需要的key
+            collect = Collect(keys=['imgs'])
+            collect(results=result)
+            to_tensor = ToTensor(keys=['imgs'])
+            to_tensor(results=result)
+            vis_feature.append(result['imgs'])
+
+        return vis_feature
 
     def collate_fn(self, data):
         if self.args.model == 'text_only_bart':
@@ -136,17 +198,22 @@ class OurDataset(Dataset):
             raw_tgt = [i[:max_output_len-1] for i in raw_tgt]
             src = []
             tgt = []
-            img = np.zeros([len(raw_src), self.args.max_img_len, 2048])
+            # img = np.zeros([len(raw_src), self.args.max_img_len, 2048])
             img_len = []
             # remove blank data
             for i in range(len(raw_src)):
                 src.append(raw_src[i])
                 tgt.append(raw_tgt[i])
-                image_feature = np.load(
-                    self.args.image_feature_path + data_id[i] + '.npy')[:max_img_len]
-                img[i][:image_feature.shape[0]] = image_feature
-                img_len.append(image_feature.shape[0])
-            img = img[:, :max(img_len)]
+                # image_feature = np.load(
+                #     self.args.image_feature_path + data_id[i] + '.npy')[:max_img_len]
+                # img[i][:image_feature.shape[0]] = image_feature
+                # img_len.append(image_feature.shape[0])
+                # img_len.append()
+            # img = img[:, :max(img_len)]
+
+            # shape : NCHW
+            img = self.visual_ids
+            img_len = [i.shape[1]*i.shape[2]*i.shape[3] for i in img]
 
             # make input mask
             mask = torch.tensor(get_mask(src, max_len=max_input_len))
@@ -160,7 +227,8 @@ class OurDataset(Dataset):
                 pad_sents(decoder_ids, 1, max_len=max_output_len)[0])
             label_ids = torch.tensor(
                 pad_sents(label_ids, -100, max_len=max_output_len)[0])
-            return src_ids, decoder_ids, mask, label_ids, torch.tensor(img), img_len
+            # return src_ids, decoder_ids, mask, label_ids, torch.tensor(img), img_len
+            return src_ids, decoder_ids, mask, label_ids, img, img_len
 
         elif self.args.model == 'text_only_t5':
             # rebuild the raw text and truncate to max length

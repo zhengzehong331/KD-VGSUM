@@ -23,6 +23,7 @@ from .rand_augment import rand_augment_transform
 from torchvision import transforms
 from mmcv.fileio import FileClient
 import whisper
+from mmcv.parallel import DataContainer as DC
 
 PIPELINES = Registry('pipeline')
 
@@ -129,19 +130,18 @@ class DecordInit:
         # 两种形式的处理
         # 1. 直接处理tar
         # 2. 直接处理视频文件
-        if results['tar'] is False:
-            if self.file_client is None:
-                self.file_client = FileClient(self.io_backend, **self.kwargs)
-            file_obj = io.BytesIO(self.file_client.get(
-                "data/"+results['filepath']))
-        else:
-            if self.tarfile is None:
-                data_root = os.path.dirname(results['fileId']) + '.tar'
-                self.tarfile = tarfile.open(data_root)
-            video_name = results['fileId'].split('/')[-1]
-            iob = self.tarfile.extractfile(video_name)
-            iob = iob.read()
-            file_obj = io.BytesIO(iob)
+        if self.file_client is None:
+            self.file_client = FileClient(self.io_backend, **self.kwargs)
+        file_obj = io.BytesIO(self.file_client.get(
+            "data/"+results['filepath']))
+        # else:
+        #     if self.tarfile is None:
+        #         data_root = os.path.dirname(results['fileId']) + '.tar'
+        #         self.tarfile = tarfile.open(data_root)
+        #     video_name = results['fileId'].split('/')[-1]
+        #     iob = self.tarfile.extractfile(video_name)
+        #     iob = iob.read()
+        #     file_obj = io.BytesIO(iob)
         container = decord.VideoReader(file_obj, num_threads=self.num_threads)
         results['video_reader'] = container
         results['total_frames'] = len(container)
@@ -1286,8 +1286,7 @@ class Tokenlization():
                 article.append(sentences[i])
                 sent_len += tokenized_sent["input_ids"].size()[1]
 
-                lm_tokenized_article["input_ids"][:, cls_position[-1]
-                    :sent_len] = tokenized_sent["input_ids"]
+                lm_tokenized_article["input_ids"][:, cls_position[-1]:sent_len] = tokenized_sent["input_ids"]
                 lm_tokenized_article["attention_mask"][:, cls_position[-1]: sent_len] = tokenized_sent[
                     "attention_mask"]
             else:
@@ -1340,10 +1339,15 @@ class Collect:
             items in data. The arg is added for compatibility. Default: False.
     """
 
+    # def __init__(self,
+    #              keys,
+    #              meta_keys=('filepath', 'original_shape', 'img_shape',
+    #                         'pad_shape', 'flip_direction', 'img_norm_cfg'),
+    #              meta_name='img_metas',
+    #              nested=False):
     def __init__(self,
                  keys,
-                 meta_keys=('filepath', 'videosum', 'original_shape', 'img_shape',
-                            'pad_shape', 'flip_direction', 'img_norm_cfg'),
+                 meta_keys=('imgs', 'original_shape', 'img_shape'),
                  meta_name='img_metas',
                  nested=False):
         self.keys = keys
