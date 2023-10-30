@@ -690,6 +690,9 @@ class BartEncoder(BartPretrainedModel):
         self.use_img_trans = use_img_trans
         self.cross_attn_type = cross_attn_type
 
+        # if self.use_img_trans:
+        #     self.img_transformer = ImageTransformerEncoder(
+        #         d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
         if self.use_img_trans:
             self.img_transformer = ImageTransformerEncoder(
                 d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
@@ -828,7 +831,7 @@ class BartEncoder(BartPretrainedModel):
 
         if self.use_img_trans:
             image_features = self.img_transformer(
-                image_features, image_len)[-1]
+                image_features, image_len)
         # ============================ image transformer ==========================================
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions

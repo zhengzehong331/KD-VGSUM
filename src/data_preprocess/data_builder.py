@@ -126,11 +126,11 @@ class OurDataset(Dataset):
             resize = Resize(scale=(-1, scale_resize))
             resize(results=result)
             # 用一个随机选择的比例列表来裁剪图像。
-            scale_crop = MultiScaleCrop(input_size=224,
-                                        scales=(1, 0.875, 0.75, 0.66),
-                                        random_crop=False,
-                                        max_wh_scale_gap=1)
-            scale_crop(results=result)
+            # scale_crop = MultiScaleCrop(input_size=224,
+            #                             scales=(1, 0.875, 0.75, 0.66),
+            #                             random_crop=False,
+            #                             max_wh_scale_gap=1)
+            # scale_crop(results=result)
             # 以一定的概率翻转输入的图像
             filp = Flip(flip_ratio=0.5)
             filp(results=result)
@@ -213,7 +213,14 @@ class OurDataset(Dataset):
 
             # shape : NCHW
             img = self.visual_ids
-            img_len = [i.shape[1]*i.shape[2]*i.shape[3] for i in img]
+            # img_len = [i.shape[1]*i.shape[2]*i.shape[3] for i in img]
+            # img_width_len = max([i.shape[3] for i in img])
+            # img_height_len = max([i.shape[2] for i in img])
+            # for i in range(len(img)):
+            #     img[i] = img[i][:, :, :img_height_len, :img_width_len]
+            img_batched_tensor = torch.stack(img)
+            img_batched_tensor = torch.cat(
+                [t.unsqueeze(0) for t in img], dim=0)
 
             # make input mask
             mask = torch.tensor(get_mask(src, max_len=max_input_len))
@@ -228,7 +235,7 @@ class OurDataset(Dataset):
             label_ids = torch.tensor(
                 pad_sents(label_ids, -100, max_len=max_output_len)[0])
             # return src_ids, decoder_ids, mask, label_ids, torch.tensor(img), img_len
-            return src_ids, decoder_ids, mask, label_ids, img, img_len
+            return src_ids, decoder_ids, mask, label_ids, img_batched_tensor, img_len
 
         elif self.args.model == 'text_only_t5':
             # rebuild the raw text and truncate to max length

@@ -4,13 +4,25 @@ from typing import Optional, List
 import torch
 from torch import nn
 
+from models import xsum
+
+
 class ImageTransformerEncoder(nn.Module):
     def __init__(self, d_model, num_layers, num_heads, dim_feedforward=2048):
         super(ImageTransformerEncoder, self).__init__()
         self.d_model = d_model
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, dim_feedforward=dim_feedforward)
-        self.encoder = _TransformerEncoder(encoder_layer, num_layers=num_layers)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=num_heads, dim_feedforward=dim_feedforward)
+        self.encoder = _TransformerEncoder(
+            encoder_layer, num_layers=num_layers)
         self.pos_encoder = PositionalEncoding(d_model, dropout=0.1)
+        # self.clip, state_dict = xsum.load(None, 'ViT-B/32',
+        #                                         device="cpu", jit=False,
+        #                                         T=8,
+        #                                         droppath=0,
+        #                                         use_checkpoint=False,
+        #                                         use_cache=True,
+        #                                   )
 
     def forward(self, inputs: torch.Tensor, lens: Optional[List[int]] = None):
         if lens is not None:
@@ -26,7 +38,11 @@ class ImageTransformerEncoder(nn.Module):
         inputs = inputs * math.sqrt(self.d_model)
         inputs = self.pos_encoder(inputs)
 
-        outputs = self.encoder(src=inputs, src_key_padding_mask=mask) # (seq_len, bs, dim)
+        # (seq_len, bs, dim)
+        outputs = self.clip(image=inputs)
+
+        outputs = self.encoder(src=inputs, src_key_padding_mask=mask)
+        # outputs = self.clip(image=inputs)
 
         return [o.permute(1, 0, 2) for o in outputs]
 
@@ -35,8 +51,10 @@ def padTensor(t: torch.Tensor, targetLen: int) -> torch.Tensor:
     oriLen, dim = t.size()
     return torch.cat((t, torch.zeros(targetLen - oriLen, dim).to(t.device)), dim=0)
 
+
 def _get_clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
+
 
 class _TransformerEncoder(nn.Module):
     def __init__(self, encoder_layer, num_layers, norm=None):
@@ -49,13 +67,15 @@ class _TransformerEncoder(nn.Module):
         outputs = [src]
 
         for mod in self.layers:
-            output = mod(outputs[-1], src_mask=mask, src_key_padding_mask=src_key_padding_mask)
+            output = mod(outputs[-1], src_mask=mask,
+                         src_key_padding_mask=src_key_padding_mask)
             outputs.append(output)
 
         if self.norm is not None:
             outputs[-1] = self.norm(outputs[-1])
 
         return outputs[1:]
+
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1, max_len=5000):
@@ -64,7 +84,8 @@ class PositionalEncoding(nn.Module):
 
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        div_term = torch.exp(torch.arange(
+            0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0).transpose(0, 1)
