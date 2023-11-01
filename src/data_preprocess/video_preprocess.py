@@ -496,14 +496,6 @@ class Resize:
         results['img_shape'] = (new_h, new_w)
         results['keep_ratio'] = self.keep_ratio
         results['scale_factor'] = results['scale_factor']*self.scale_factor
-        # # 展示图片
-        # for i, image_np in enumerate(results['imgs']):
-        #     result_dir = 'result/image'
-        #     save_path = os.path.join(result_dir, f'image_{i + 1}.jpg')
-        #     # 保存图像到指定路径
-        #     image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2BGRA)
-        #     cv2.imwrite(save_path, image_np)
-        #     print(f'Image {i + 1} saved to: {save_path}')
         if not self.lazy:
             if 'imgs' in results:
                 results['imgs'] = self._resize_imgs(results['imgs'], new_w,
@@ -525,6 +517,14 @@ class Resize:
                 assert results['proposals'].shape[1] == 4
                 results['proposals'] = self._box_resize(
                     results['proposals'], self.scale_factor)
+        # 展示图片
+        # for i, image_np in enumerate(results['imgs']):
+        #     result_dir = '/home/zehong/Desktop/NLP/VG-SUM/result/image'
+        #     save_path = os.path.join(result_dir, f'image_{i + 1}.jpg')
+        #     # 保存图像到指定路径
+        #     image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2BGRA)
+        #     cv2.imwrite(save_path, image_np)
+        #     print(f'Image {i + 1} saved to: {save_path}')
         return results
 
     def __repr__(self):

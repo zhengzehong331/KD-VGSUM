@@ -104,7 +104,7 @@ class OurDataset(Dataset):
     def visual_pre(self, path):
         """视频预处理
         """
-        scale_resize = int(256 / 224 * 224)
+        scale_resize = (512, 512)
         vis_feature = []
         for line in tqdm(self.lines):
             result = {}
@@ -123,7 +123,7 @@ class OurDataset(Dataset):
             decord_decode = DecordDecode()
             decord_decode(results=result)
             # 重新统一图像尺寸 这里将1280*720缩放为265*455（可以通过动态调整长宽缩放，从而调整缩放比例）
-            resize = Resize(scale=(-1, scale_resize))
+            resize = Resize(scale=scale_resize, keep_ratio=False)
             resize(results=result)
             # 用一个随机选择的比例列表来裁剪图像。
             # scale_crop = MultiScaleCrop(input_size=224,
