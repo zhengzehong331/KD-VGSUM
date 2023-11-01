@@ -46,6 +46,7 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 from transformers.models.bart.configuration_bart import BartConfig
+
 from models.img_transformer import ImageTransformerEncoder
 
 logger = logging.get_logger(__name__)
@@ -695,8 +696,7 @@ class BartEncoder(BartPretrainedModel):
         #         d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
         if self.use_img_trans:
             self.img_transformer = ImageTransformerEncoder(
-                d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
-
+                d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048, backbone='LinProj')
         # Some global variables
         visual_feature_dim = 2048
         text_feature_dim = embed_dim  # 768

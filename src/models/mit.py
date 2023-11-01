@@ -1,4 +1,4 @@
-from models.clip.model import QuickGELU
+from models.clip_b.model import QuickGELU
 import torch
 from torch import nn
 from collections import OrderedDict

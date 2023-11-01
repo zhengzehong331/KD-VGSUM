@@ -84,6 +84,13 @@ if __name__ == '__main__':
                         help='whether or not to use forget gate')
     parser.add_argument('-fusion_layer', type=int, default=5,
                         help='number of fusion layers')  # 5 is the last layer
+
+    # About CLIP modal
+    parser.add_argument('-visual_backbone', type=str, default='LinProj',
+                        help='CLIP modal backbone')
+    parser.add_argument('-clip_path', type=str, default='ViT-B/32',
+                        help='CLIP modal path')
+
     '''
     Textual features: T in (S_t, D_t)
     Visual features: V in (S_v, D_v)
