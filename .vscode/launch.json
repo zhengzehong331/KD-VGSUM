@@ -26,7 +26,7 @@
                 "-scheduler_lambda2=0.95",
                 "-num_epochs=100",
                 "-grad_accumulate=5",
-                "-max_input_len=512",
+                "-max_input_len=768",
                 "-max_output_len=64",
                 "-max_img_len=256",
                 "-n_beams=5",

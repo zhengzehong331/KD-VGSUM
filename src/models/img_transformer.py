@@ -5,6 +5,8 @@ from typing import Optional, List
 import torch
 from torch import nn
 from models import xsum
+from models.clip.model import LayerNorm
+from models.mit import MultiframeIntegrationTransformer
 # from models.modeling_bart import BartLearnedPositionalEmbedding
 
 logger = logging.get_logger(__name__)
@@ -30,6 +32,12 @@ class ImageTransformerEncoder(nn.Module):
                                              use_cache=True,
                                              logger=logger
                                              )
+
+        self.prompts_visual_ln = LayerNorm(self.multimodal_model.vision_width)
+        self.prompts_visual_proj = nn.Parameter(
+            torch.randn(self.multimodal_model.vision_width, self.multimodal_model.embed_dim))
+        self.mit = self.multimodal_model.mit
+
         # encoder_layer = nn.TransformerEncoderLayer(
         #     d_model=d_model, nhead=num_heads, dim_feedforward=dim_feedforward)
         # self.encoder = _TransformerEncoder(
@@ -165,8 +173,8 @@ class ImageTransformerEncoder(nn.Module):
 
         cls_features = cls_features.view(b, t, -1)
         img_features = img_features.view(b, t, -1, cls_features.shape[-1])
-
-        video_features = self.mit(cls_features)
+        # 这里shape从[2,8,512]->[16,512]
+        video_features = self.multimodal_model.mit(cls_features)
 
         return video_features, img_features
 

@@ -104,7 +104,7 @@ class OurDataset(Dataset):
     def visual_pre(self, path):
         """视频预处理
         """
-        scale_resize = (512, 512)
+        scale_resize = (224, 224)
         vis_feature = []
         for line in tqdm(self.lines):
             result = {}

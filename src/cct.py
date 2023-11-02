@@ -12,6 +12,7 @@ class CrossFramelAttentionBlock(nn.Module):
     """
     定义一个交叉帧注意力模块
     """
+
     def __init__(self, d_model: int, n_head: int, attn_mask: torch.Tensor = None, droppath=0., T=0, ):
         super().__init__()
         self.T = T
@@ -58,7 +59,8 @@ class CrossFramelAttentionBlock(nn.Module):
         # 张量的维度交换操作。它将原始张量的维度重新排列，以获得新的形状。
         msg_token = msg_token.permute(1, 2, 0, 3).view(self.T, b, d)
         # 进行信息交互（自注意力层将三个输入作为查询（query）、键（key）和值（value）来执行注意力计算。）
-        msg_token = msg_token + self.drop_path(self.message_attn(self.message_ln(msg_token), self.message_ln(msg_token), self.message_ln(msg_token), need_weights=False)[0])
+        msg_token = msg_token + self.drop_path(self.message_attn(self.message_ln(
+            msg_token), self.message_ln(msg_token), self.message_ln(msg_token), need_weights=False)[0])
         # 恢复原来的tensor形状
         msg_token = msg_token.view(self.T, 1, b, d).permute(1, 2, 0, 3)
 
@@ -131,7 +133,7 @@ class CrossFrameCommunicationTransformer(nn.Module):
         # 组合H*W,将二维图像转化为一维
         x = x.reshape(x.shape[0], x.shape[1], -1)
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-        # 添加类型embedding（可以删掉）
+        # 添加类型embedding
         x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1],
                       dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
         # 添加位置embedding

@@ -61,6 +61,11 @@ class XSUM(CLIP):
         self.use_cache = use_cache
         self.mit = MultiframeIntegrationTransformer(
             T=T, embed_dim=embed_dim, layers=mit_layers,)
+        self.vision_width = vision_width
+        self.embed_dim = embed_dim
+        self.prompts_visual_ln = LayerNorm(vision_width)
+        self.prompts_visual_proj = nn.Parameter(
+            torch.randn(vision_width, embed_dim))
 
         dpr = [x.item() for x in torch.linspace(
             0, droppath, vision_layers)] if droppath > 0. else None
@@ -114,8 +119,8 @@ class XSUM(CLIP):
         image = image.reshape(-1, c, h, w)
 
         cls_features, img_features = self.encode_image(image)
-        # img_features = self.prompts_visual_ln(img_features)
-        # img_features = img_features @ self.prompts_visual_proj
+        img_features = self.prompts_visual_ln(img_features)
+        img_features = img_features @ self.prompts_visual_proj
 
         cls_features = cls_features.view(b, t, -1)
         img_features = img_features.contiguous().view(
@@ -127,14 +132,14 @@ class XSUM(CLIP):
 
     def forward(self, image):
         # 获取batch_size
-        b = image.shape[0]
-        # 使用CLIP的encode进行嵌入，可以同时嵌入文本视频特征与图像特征
-        video_features, img_features = self.encode_video(image)
-        # 沿着维度 dim=1（通常是批次维度）进行平均。这可以用来降低特征的维度，从而获得更紧凑的表示。最终，img_features 存储了平均后的图像特征。
-        img_features = img_features.mean(dim=1, keepdim=False)
-        video_features = video_features / \
-            video_features.norm(dim=-1, keepdim=True)
-        return video_features
+        # b = image.shape[0]
+        # # 使用CLIP的encode进行嵌入，可以同时嵌入文本视频特征与图像特征
+        # video_features, img_features = self.encode_video(image)
+        # # 沿着维度 dim=1（通常是批次维度）进行平均。这可以用来降低特征的维度，从而获得更紧凑的表示。最终，img_features 存储了平均后的图像特征。
+        # img_features = img_features.mean(dim=1, keepdim=False)
+        # video_features = video_features / video_features.norm(dim=-1, keepdim=True)
+        # return video_features
+        pass
 
 
 def build_model(state_dict: dict, T=8, droppath=0., use_checkpoint=False, logger=logger, prompts_alpha=1e-1, prompts_layers=2, use_cache=True, mit_layers=4,):

@@ -1,4 +1,4 @@
-from models.clip_b.model import LayerNorm, QuickGELU, DropPath
+from models.clip.model import LayerNorm, QuickGELU, DropPath
 from collections import OrderedDict
 from timm.models.layers import trunc_normal_
 import torch
@@ -103,6 +103,7 @@ class CrossFrameCommunicationTransformer(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=width,
                                kernel_size=patch_size, stride=patch_size, bias=False)
 
+        # width 视觉特征维度
         scale = width ** -0.5
         self.class_embedding = nn.Parameter(scale * torch.randn(width))
         self.positional_embedding = nn.Parameter(
@@ -135,8 +136,8 @@ class CrossFrameCommunicationTransformer(nn.Module):
         x = x.reshape(x.shape[0], x.shape[1], -1)
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
         # 添加类型embedding（可以删掉）
-        # x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1],
-        #               dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1],
+                      dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
         # 添加位置embedding
         x = x + self.positional_embedding.to(x.dtype)
 
