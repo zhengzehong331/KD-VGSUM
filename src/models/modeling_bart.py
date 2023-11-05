@@ -706,7 +706,7 @@ class BartEncoder(BartPretrainedModel):
         #                                      )
 
         # Some global variables
-        visual_feature_dim = 2048
+        visual_feature_dim = 512
         text_feature_dim = embed_dim  # 768
 
         if cross_attn_type == 0:
@@ -840,6 +840,8 @@ class BartEncoder(BartPretrainedModel):
         if self.use_img_trans:
             image_features = self.img_transformer(
                 image_features)
+            # image_features = image_features.view(b, t, -1)
+
         # ============================ image transformer ==========================================
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -1363,7 +1365,7 @@ class BartModel(BartPretrainedModel):
 
     @add_start_docstrings_to_model_forward(BART_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
-        processor_class=_TOKENIZER_FOR_DOC,
+        tokenizer_class=_TOKENIZER_FOR_DOC,
         checkpoint="facebook/bart-large",
         output_type=Seq2SeqModelOutput,
         config_class=_CONFIG_FOR_DOC,

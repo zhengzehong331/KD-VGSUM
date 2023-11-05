@@ -54,11 +54,12 @@ class MultiframeIntegrationTransformer(nn.Module):
             nn.init.ones_(m.weight)
 
     def forward(self, x):
-        ori_x = x
+        ori_x = x  # (2,8,512)
         x = x + self.positional_embedding
         x = x.permute(1, 0, 2)
         x = self.resblocks(x)
         x = x.permute(1, 0, 2)
         x = x.type(ori_x.dtype) + ori_x
 
-        return x.mean(dim=1, keepdim=False)
+        # return x.mean(dim=1, keepdim=False)
+        return x

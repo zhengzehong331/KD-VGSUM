@@ -204,6 +204,8 @@ class OurDataset(Dataset):
             for i in range(len(raw_src)):
                 src.append(raw_src[i])
                 tgt.append(raw_tgt[i])
+                # 这里固定只取8帧，我们也可以设置为每8帧获取一次图像
+                img_len.append(8)
                 # image_feature = np.load(
                 #     self.args.image_feature_path + data_id[i] + '.npy')[:max_img_len]
                 # img[i][:image_feature.shape[0]] = image_feature

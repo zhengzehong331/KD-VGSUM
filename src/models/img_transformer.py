@@ -167,14 +167,16 @@ class ImageTransformerEncoder(nn.Module):
         image = image.reshape(-1, c, h, w)
 
         # cls这里表示类别特征
-        cls_features, img_features = self.encode_image(image)
+        cls_features, img_features = self.encode_image(
+            image)  # (16,512)  (16,49,769)
         img_features = self.prompts_visual_ln(img_features)
-        img_features = img_features @ self.prompts_visual_proj
+        img_features = img_features @ self.prompts_visual_proj  # (16,49,512)
 
-        cls_features = cls_features.view(b, t, -1)
-        img_features = img_features.view(b, t, -1, cls_features.shape[-1])
+        cls_features = cls_features.view(b, t, -1)  # (2,8,512)
+        img_features = img_features.view(
+            b, t, -1, cls_features.shape[-1])  # (2,8,49,512)
         # 这里shape从[2,8,512]->[16,512]
-        video_features = self.multimodal_model.mit(cls_features)
+        video_features = self.multimodal_model.mit(cls_features)  # 2,512
 
         return video_features, img_features
 

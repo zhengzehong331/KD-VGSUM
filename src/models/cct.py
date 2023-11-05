@@ -130,27 +130,27 @@ class CrossFrameCommunicationTransformer(nn.Module):
 
     def forward(self, x: torch.Tensor):
 
-        x = self.conv1(x)  # shape = [*, width, grid, grid]
+        x = self.conv1(x)  # shape = [*, width, grid, grid]  16,3,224
 
         # 组合H*W,将二维图像转化为一维
-        x = x.reshape(x.shape[0], x.shape[1], -1)
-        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+        x = x.reshape(x.shape[0], x.shape[1], -1)  # 16 768,47
+        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]  16,49,768
         # 添加类型embedding（可以删掉）
         x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1],
-                      dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+                      dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]    16,50,768
         # 添加位置embedding
         x = x + self.positional_embedding.to(x.dtype)
 
         x = self.ln_pre(x)
 
-        x = x.permute(1, 0, 2)
+        x = x.permute(1, 0, 2)    # 50,16,768
         # 进行注意力机制
-        x = self.transformer(x)
-        x = x.permute(1, 0, 2)
+        x = self.transformer(x)     # 50,16,768
+        x = x.permute(1, 0, 2)      # 16,50,768
 
-        cls_x = self.ln_post(x[:, 0, :])
+        cls_x = self.ln_post(x[:, 0, :])    # 16,768
 
         if self.proj is not None:
             cls_x = cls_x @ self.proj
 
-        return cls_x, x[:, 1:, :]
+        return cls_x, x[:, 1:, :]   # 16,49,768
