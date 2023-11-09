@@ -7,6 +7,9 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/run.py",
+            "env": {
+                "TORCH_DISTRIBUTED_DEBUG": "DETAIL"
+            },
             "args": [
                 "-model=multi_modal_bart",
                 "-train_src_path=/home/zehong/dataset/How2/text/sum_train/tran.tok.txt",

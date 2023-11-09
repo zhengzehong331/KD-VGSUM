@@ -46,7 +46,7 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 from transformers.models.bart.configuration_bart import BartConfig
-from models import xsum
+from models import img_clip
 
 from models.img_transformer import ImageTransformerEncoder
 
@@ -693,18 +693,16 @@ class BartEncoder(BartPretrainedModel):
         self.cross_attn_type = cross_attn_type
 
         if self.use_img_trans:
-            self.img_transformer = ImageTransformerEncoder(
-                d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
-        # if self.use_img_trans:
-        #     self.img_transformer = xsum.load(None, 'ViT-B/32',
-        #                                      device="cpu", jit=False,
-        #                                      T=8,
-        #                                      droppath=0,
-        #                                      use_checkpoint=False,
-        #                                      use_cache=True,
-        #                                      logger=logger
-        #                                      )
-
+            # self.img_transformer = ImageTransformerEncoder(
+            #     d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
+            self.img_transformer, _ = img_clip.load(None, 'ViT-B/32',
+                                                    device="cpu", jit=False,
+                                                    T=8,
+                                                    droppath=0,
+                                                    use_checkpoint=False,
+                                                    use_cache=True,
+                                                    logger=logger
+                                                    )
         # Some global variables
         visual_feature_dim = 512
         text_feature_dim = embed_dim  # 768

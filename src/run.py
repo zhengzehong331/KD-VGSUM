@@ -171,7 +171,7 @@ if __name__ == '__main__':
                       logger=logger,
                       gpus=0,
                       distributed_backend='ddp',
-                      plugins=DDPPlugin(find_unused_parameters=False),
+                      plugins=DDPPlugin(find_unused_parameters=True),
                       gradient_clip_val=1.0,
                       max_epochs=args.num_epochs,
                       limit_val_batches=args.limit_val_batches,
@@ -197,6 +197,9 @@ if __name__ == '__main__':
     if args.do_train == 'True':
         trainer.fit(model, train_dataloader=summary_data.train_loader,
                     val_dataloaders=summary_data.val_loader)
+        for name, param in model.named_parameters():
+            if param.grad is None:
+                print(name)
     if args.do_test == 'True':
         model = model.load_from_checkpoint(args.checkpoint, args=args)
         trainer.test(model=model, test_dataloaders=summary_data.test_loader)

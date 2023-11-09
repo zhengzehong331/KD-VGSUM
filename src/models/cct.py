@@ -151,6 +151,7 @@ class CrossFrameCommunicationTransformer(nn.Module):
         cls_x = self.ln_post(x[:, 0, :])    # 16,768
 
         if self.proj is not None:
-            cls_x = cls_x @ self.proj
+            cls_x = cls_x @ self.proj  # 16,512
 
-        return cls_x, x[:, 1:, :]   # 16,49,768
+        # return cls_x, x[:, 1:, :]   # 16,49,768
+        return cls_x
