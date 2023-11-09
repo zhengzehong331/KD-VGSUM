@@ -2,7 +2,8 @@ from models.base_model import BaseModel
 from transformers import BartTokenizer
 from models.modeling_bart import BartForMultiModalGeneration
 from datasets import load_metric
-
+from rouge_chinese import Rouge
+import jieba
 
 class BartMultiModal(BaseModel):
 
@@ -18,7 +19,8 @@ class BartMultiModal(BaseModel):
                                                                  n_attn_heads=args.n_attn_heads
                                                                  )
         self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-        self.rouge = load_metric('rouge', experiment_id=self.args.log_name)
+        # self.rouge = load_metric('rouge', experiment_id=self.args.log_name)
+        self.rouge = Rouge()
 
     def forward(self, input_ids, attention_mask, decoder_input_ids, labels, image_features, image_len):
         loss = self.model(input_ids=input_ids,
@@ -92,7 +94,8 @@ class BartMultiModal(BaseModel):
         return [summary_ids, label_ids]
 
     def test_epoch_end(self, outputs):
-        rouge = load_metric('rouge', experiment_id=self.args.log_name)
+        # rouge = load_metric('rouge', experiment_id=self.args.log_name)
+        rouge =  Rouge()
         summary = []
         reference = []
         for item in outputs:
@@ -115,12 +118,21 @@ class BartMultiModal(BaseModel):
         self.save_txt(self.args.test_save_file, summary)
 
     def calrouge(self, summary, reference, rouge):
-        rouge.add_batch(predictions=summary, references=reference)
-        final_results = rouge.compute(
-            rouge_types=["rouge1", "rouge2", "rougeL"])
-        R1_F1 = final_results["rouge1"].mid.fmeasure * 100
-        R2_F1 = final_results["rouge2"].mid.fmeasure * 100
-        RL_F1 = final_results["rougeL"].mid.fmeasure * 100
+        for i in range(len(summary)):
+            summary[i] = ' '.join(jieba.cut(summary[i]))
+            reference[i] = ' '.join(jieba.cut(reference[i]))
+        final_results = rouge.get_scores(summary, reference, avg=True)
+        R1_F1 = final_results["rouge-1"]["f"] * 100
+        R2_F1 = final_results["rouge-2"]["f"] * 100
+        RL_F1 = final_results["rouge-l"]["f"] * 100
+
+
+            
+        # rouge.add_batch(predictions=summary, references=reference)
+        # final_results = rouge.compute(rouge_types=["rouge1", "rouge2", "rougeL"])
+        # R1_F1 = final_results["rouge1"].mid.fmeasure * 100
+        # R2_F1 = final_results["rouge2"].mid.fmeasure * 100
+        # RL_F1 = final_results["rougeL"].mid.fmeasure * 100
         return R1_F1, R2_F1, RL_F1
 
     def save_txt(self, file_name, list_data):
