@@ -12,6 +12,7 @@ from utils.utils import pad_sents, get_mask
 import csv
 from mmcv.fileio import FileClient
 from zhconv import convert
+import os
 
 
 # from .pipeline import Compose
@@ -25,6 +26,7 @@ class OurDataset(Dataset):
     """Summarization dataset"""
 
     def __init__(self, args, mode):
+
         self.args = args
         self.start_index = 1
         self.whisper_model = whisper.load_model("base")
@@ -39,16 +41,17 @@ class OurDataset(Dataset):
                 'facebook/bart-base')
         if mode == 'train':
             src_path = args.train_src_path
-            tgt_path = args.train_tgt_path
+            # tgt_path = args.train_tgt_path
         if mode == 'val':
             src_path = args.val_src_path
-            tgt_path = args.val_tgt_path
+            # tgt_path = args.val_tgt_path
         if mode == 'test':
             src_path = args.test_src_path
-            tgt_path = args.test_tgt_path
+            # tgt_path = args.test_tgt_path
+        self.lines = self.file_reader(src_path)
+        # 除去错误数据
+        self.lines = [line for line in self.lines if os.path.exists("data/"+line["video_path"])]
 
-        self.lines = self.file_reader(
-            '/home/zehong/Desktop/NLP/VG-SUM/data/DemoSum.csv')
         self.tgt = [line["tgt"] for line in self.lines]
         self.data_id = [line["data_id"] for line in self.lines]
         print('==================== Transcription {} video ======================'.format(mode))
