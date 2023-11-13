@@ -1,4 +1,5 @@
 import io
+import subprocess
 import whisper
 from torch.utils.data import Dataset, DataLoader
 from transformers import BartTokenizer, T5Tokenizer
@@ -52,6 +53,10 @@ class OurDataset(Dataset):
         # 除去错误数据
         self.lines = [line for line in self.lines if os.path.exists("data/"+line["video_path"])]
 
+        # 文件检查损坏检查
+        print("================Check Broken Video====================")
+        self.lines = [line for line in tqdm(self.lines) if not self.is_video_corrupted("data/"+line["video_path"])]
+
         self.tgt = [line["tgt"] for line in self.lines]
         self.data_id = [line["data_id"] for line in self.lines]
         print('==================== Transcription {} video ======================'.format(mode))
@@ -91,7 +96,17 @@ class OurDataset(Dataset):
                 lines.append(dict(data_id=data_id,
                                   tgt=tgt, video_path=video_path))
         return lines
+    
+    # 检查文件是否损坏函数
+    def is_video_corrupted(self,file_path):
+        try:
+            # 使用ffprobe的命令行工具进行文件检测
+            subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries','stream=codec_type', '-of', 'default=noprint_wrappers=1:nokey=1', file_path],stderr=subprocess.STDOUT)
+            return False  # 如果没有抛出异常，文件没有损坏
+        except subprocess.CalledProcessError as e:
+            return True  # 文件损坏
 
+    
     def transcription(self, path):
         """进行视频语音提取操作，并生成字幕
         """
