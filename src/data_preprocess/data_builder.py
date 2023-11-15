@@ -54,13 +54,14 @@ class OurDataset(Dataset):
         self.lines = [line for line in self.lines if os.path.exists("data/"+line["video_path"])]
 
         # 文件检查损坏检查
-        print("================Check Broken Video====================")
-        self.lines = [line for line in tqdm(self.lines) if not self.is_video_corrupted("data/"+line["video_path"])]
+        # print("================Check Broken Video====================")
+        # self.lines = [line for line in tqdm(self.lines) if not self.is_video_corrupted("data/"+line["video_path"])]
 
         self.tgt = [line["tgt"] for line in self.lines]
         self.data_id = [line["data_id"] for line in self.lines]
-        print('==================== Transcription {} video ======================'.format(mode))
-        self.src = self.transcription(self.lines)
+        self.src = [line["transport"] for line in self.lines]
+        # print('==================== Transcription {} video ======================'.format(mode))
+        # self.src = self.transcription(self.lines)
         print('==================== Tokening {} set ======================'.format(mode))
         self.src_ids = self.tokenize(self.src)
         self.tgt_ids = self.tokenize(self.tgt)
@@ -93,8 +94,9 @@ class OurDataset(Dataset):
                     data_id = line[0]
                     tgt = line[1]
                     video_path = line[2]
+                    transport = line[3]
                 lines.append(dict(data_id=data_id,
-                                  tgt=tgt, video_path=video_path))
+                                  tgt=tgt, video_path=video_path,transport=transport))
         return lines
     
     # 检查文件是否损坏函数
