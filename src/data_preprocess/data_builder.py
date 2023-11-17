@@ -57,6 +57,10 @@ class OurDataset(Dataset):
         # print("================Check Broken Video====================")
         # self.lines = [line for line in tqdm(self.lines) if not self.is_video_corrupted("data/"+line["video_path"])]
 
+        # 文件检查损坏检查
+        print("================Check Broken Video====================")
+        self.lines = [line for line in tqdm(self.lines) if not (line["tgt"]=="" or line["transport"]=="")]
+
         self.tgt = [line["tgt"] for line in self.lines]
         self.data_id = [line["data_id"] for line in self.lines]
         self.src = [line["transport"] for line in self.lines]
