@@ -53,15 +53,19 @@ class OurDataset(Dataset):
         # 除去错误数据
         self.lines = [line for line in self.lines if os.path.exists("data/"+line["video_path"])]
 
+
         # 文件检查损坏检查
         # print("================Check Broken Video====================")
-        # self.lines = [line for line in tqdm(self.lines) if not self.is_video_corrupted("data/"+line["video_path"])]
+        # self.lines = [line for line in tqdm(self.lines) if not (line["tgt"]=="" or line["transport"]=="")]
 
-        # 文件检查损坏检查
-        print("================Check Broken Video====================")
-        self.lines = [line for line in tqdm(self.lines) if not (line["tgt"]=="" or line["transport"]=="")]
+        self.tgt = []
+        # self.tgt = [line["tgt"] for line in self.lines]
+        for line in self.lines:
+             file_path = "data/"+line["tgt"]
+             with open(file_path, "r", encoding='UTF-8')as f:
+                 tgt = f.read()
+                 self.tgt.append(tgt)
 
-        self.tgt = [line["tgt"] for line in self.lines]
         self.data_id = [line["data_id"] for line in self.lines]
         self.src = [line["transport"] for line in self.lines]
         # print('==================== Transcription {} video ======================'.format(mode))
