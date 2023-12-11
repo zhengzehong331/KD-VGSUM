@@ -132,8 +132,7 @@ class DecordInit:
         # 2. 直接处理视频文件
         if self.file_client is None:
             self.file_client = FileClient(self.io_backend, **self.kwargs)
-        file_obj = io.BytesIO(self.file_client.get(
-            "data/"+results['filepath']))
+        file_obj = io.BytesIO(self.file_client.get(results['filepath']))
         # else:
         #     if self.tarfile is None:
         #         data_root = os.path.dirname(results['fileId']) + '.tar'

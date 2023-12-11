@@ -14,9 +14,6 @@ from mmcv.fileio import FileClient
 from zhconv import convert
 import os
 
-
-# from .pipeline import Compose
-
 # 配置图像归一化参数
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_bgr=False)
@@ -28,7 +25,6 @@ class OurDataset(Dataset):
 
     def __init__(self, args, mode):
         self.args = args
-        # initial tokenizer and text
         if 't5' in self.args.model:
             self.tokenizer = T5Tokenizer.from_pretrained('t5-base')
         else:
@@ -45,7 +41,7 @@ class OurDataset(Dataset):
             tgt_path = args.test_tgt_path
         self.src = self.file_reader(src_path)
         self.tgt = self.file_reader(tgt_path)
-        self.data_id = [item.split()[0] for item in self.tgt]
+        self.video_paths = [self.args.image_feature_path+ item.split()[0]+'.mp4' for item in self.tgt]
         self.src = [" ".join(item.split()[1:]) for item in self.src]
         self.tgt = [" ".join(item.split()[1:]) for item in self.tgt]
         # get tokenized test
@@ -53,9 +49,8 @@ class OurDataset(Dataset):
         self.src_ids = self.tokenize(self.src)
         self.tgt_ids = self.tokenize(self.tgt)
         if self.args.model == 'multi_modal_bart':
-            print(
-                '==================== Video Prepreocess {} set ======================'.format(mode))
-            self.visual_ids = self.visual_pre(self.lines)
+            print('==================== Video Prepreocess {} set ======================'.format(mode))
+            self.visual_ids = self.visual_pre()
         else:
             self.visual_ids = None
 
@@ -75,35 +70,14 @@ class OurDataset(Dataset):
         lines = [item.strip('\n') for item in file.readlines()]
         return lines
 
-    def is_video_corrupted(self, file_path):
-        try:
-            # 使用ffprobe的命令行工具进行文件检测
-            subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
-                                    'stream=codec_type', '-of', 'default=noprint_wrappers=1:nokey=1', file_path], stderr=subprocess.STDOUT)
-            return False  # 如果没有抛出异常，文件没有损坏
-        except subprocess.CalledProcessError as e:
-            return True  # 文件损坏
-
-    def transcription(self, path):
-        """进行视频语音提取操作，并生成字幕
-        """
-        src = []
-        for line in tqdm(self.lines):
-            path = "data/"+line["video_path"]
-            tran = self.whisper_model.transcribe(
-                path, fp16=False, language='Chinese')
-            ch_transcription = convert(tran["text"], 'zh-cn')
-            src.append(ch_transcription)
-        return src
-
-    def visual_pre(self, path):
+    def visual_pre(self):
         """视频预处理
         """
         scale_resize = (224, 224)
         vis_feature = []
-        for line in tqdm(self.lines):
+        for line in tqdm(self.video_paths):
             result = {}
-            result["filepath"] = line["video_path"]
+            result["filepath"] = line
             result["start_index"] = 1
             result["modality"] = 'RGB'
 
