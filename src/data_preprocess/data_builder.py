@@ -1,6 +1,5 @@
 import io
 import subprocess
-import whisper
 from torch.utils.data import Dataset, DataLoader
 from transformers import BartTokenizer, T5Tokenizer
 from tqdm import tqdm
@@ -25,15 +24,10 @@ img_norm_cfg = dict(
 
 class OurDataset(Dataset):
     """Summarization dataset"""
+    """Summarization dataset"""
 
     def __init__(self, args, mode):
-
         self.args = args
-        self.start_index = 1
-        self.whisper_model = whisper.load_model("base")
-
-        # self.pipeline = Compose(pipeline)
-
         # initial tokenizer and text
         if 't5' in self.args.model:
             self.tokenizer = T5Tokenizer.from_pretrained('t5-base')
@@ -42,38 +36,22 @@ class OurDataset(Dataset):
                 'facebook/bart-base')
         if mode == 'train':
             src_path = args.train_src_path
-            # tgt_path = args.train_tgt_path
+            tgt_path = args.train_tgt_path
         if mode == 'val':
             src_path = args.val_src_path
-            # tgt_path = args.val_tgt_path
+            tgt_path = args.val_tgt_path
         if mode == 'test':
             src_path = args.test_src_path
-            # tgt_path = args.test_tgt_path
-        self.lines = self.file_reader(src_path)
-        # 除去错误数据
-        self.lines = [line for line in self.lines if os.path.exists("data/"+line["video_path"])]
-
-
-        # 文件检查损坏检查
-        # print("================Check Broken Video====================")
-        # self.lines = [line for line in tqdm(self.lines) if not (line["tgt"]=="" or line["transport"]=="")]
-
-        self.tgt = []
-        # self.tgt = [line["tgt"] for line in self.lines]
-        for line in self.lines:
-             file_path = "data/"+line["tgt"]
-             with open(file_path, "r", encoding='UTF-8')as f:
-                 tgt = f.read()
-                 self.tgt.append(tgt)
-
-        self.data_id = [line["data_id"] for line in self.lines]
-        self.src = [line["transport"] for line in self.lines]
-        # print('==================== Transcription {} video ======================'.format(mode))
-        # self.src = self.transcription(self.lines)
+            tgt_path = args.test_tgt_path
+        self.src = self.file_reader(src_path)
+        self.tgt = self.file_reader(tgt_path)
+        self.data_id = [item.split()[0] for item in self.tgt]
+        self.src = [" ".join(item.split()[1:]) for item in self.src]
+        self.tgt = [" ".join(item.split()[1:]) for item in self.tgt]
+        # get tokenized test
         print('==================== Tokening {} set ======================'.format(mode))
         self.src_ids = self.tokenize(self.src)
         self.tgt_ids = self.tokenize(self.tgt)
-
         if self.args.model == 'multi_modal_bart':
             print(
                 '==================== Video Prepreocess {} set ======================'.format(mode))
@@ -93,30 +71,19 @@ class OurDataset(Dataset):
         return tokenized_text
 
     def file_reader(self, file_path):
-        lines = []
-        with open(file_path, 'r') as fin:
-            csv_reader = csv.reader(fin)
-            next(csv_reader, None)
-            for line in csv_reader:
-                if line is not None:
-                    data_id = line[0]
-                    tgt = line[1]
-                    video_path = line[2]
-                    transport = line[3]
-                lines.append(dict(data_id=data_id,
-                                  tgt=tgt, video_path=video_path,transport=transport))
+        file = open(file_path, 'r')
+        lines = [item.strip('\n') for item in file.readlines()]
         return lines
-    
-    # 检查文件是否损坏函数
-    def is_video_corrupted(self,file_path):
+
+    def is_video_corrupted(self, file_path):
         try:
             # 使用ffprobe的命令行工具进行文件检测
-            subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries','stream=codec_type', '-of', 'default=noprint_wrappers=1:nokey=1', file_path],stderr=subprocess.STDOUT)
+            subprocess.check_output(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
+                                    'stream=codec_type', '-of', 'default=noprint_wrappers=1:nokey=1', file_path], stderr=subprocess.STDOUT)
             return False  # 如果没有抛出异常，文件没有损坏
         except subprocess.CalledProcessError as e:
             return True  # 文件损坏
 
-    
     def transcription(self, path):
         """进行视频语音提取操作，并生成字幕
         """
