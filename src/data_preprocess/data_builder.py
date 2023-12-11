@@ -25,6 +25,7 @@ class OurDataset(Dataset):
 
     def __init__(self, args, mode):
         self.args = args
+        self.sample_duration=8
         if 't5' in self.args.model:
             self.tokenizer = T5Tokenizer.from_pretrained('t5-base')
         else:
@@ -41,6 +42,7 @@ class OurDataset(Dataset):
             tgt_path = args.test_tgt_path
         self.src = self.file_reader(src_path)
         self.tgt = self.file_reader(tgt_path)
+        self.data_id = [item.split()[0] for item in self.tgt]
         self.video_paths = [self.args.image_feature_path+ item.split()[0]+'.mp4' for item in self.tgt]
         self.src = [" ".join(item.split()[1:]) for item in self.src]
         self.tgt = [" ".join(item.split()[1:]) for item in self.tgt]
@@ -85,8 +87,10 @@ class OurDataset(Dataset):
             vedio_reader = DecordInit()
             vedio_reader(results=result)
             # 采样帧处理
-            sample_frames = SampleFrames(
-                clip_len=1, frame_interval=1, num_clips=8, test_mode=False)
+            # sample_frames = SampleFrames(
+            #     clip_len=1, frame_interval=1, num_clips=8, test_mode=False)
+
+            sample_frames = SampleFrames(clip_len=1, frame_interval=self.args.frame_interval, test_mode=False)
             sample_frames(results=result)
             # 使用decord对视频进行解码准备
             decord_decode = DecordDecode()
@@ -159,7 +163,6 @@ class OurDataset(Dataset):
             max_input_len = self.args.max_input_len
             max_output_len = self.args.max_output_len
             max_img_len = self.args.max_img_len
-            # self.src_ids[idx], self.tgt_ids[idx], self.data_id[idx]
             raw_src = [pair[0] for pair in data]
             raw_tgt = [pair[1] for pair in data]
             data_id = [pair[2] for pair in data]
@@ -167,31 +170,24 @@ class OurDataset(Dataset):
             raw_tgt = [i[:max_output_len-1] for i in raw_tgt]
             src = []
             tgt = []
-            # img = np.zeros([len(raw_src), self.args.max_img_len, 2048])
+            img = np.zeros([len(raw_src),self.args.max_img_len,3,224,224])
             img_len = []
             # remove blank data
             for i in range(len(raw_src)):
                 src.append(raw_src[i])
                 tgt.append(raw_tgt[i])
-                # 这里固定只取8帧，我们也可以设置为每8帧获取一次图像
-                img_len.append(8)
-                # image_feature = np.load(
-                #     self.args.image_feature_path + data_id[i] + '.npy')[:max_img_len]
-                # img[i][:image_feature.shape[0]] = image_feature
-                # img_len.append(image_feature.shape[0])
-                # img_len.append()
-            # img = img[:, :max(img_len)]
+                img[i][:self.visual_ids[i].shape[0]] = self.visual_ids[i][:self.args.max_img_len]
+                img_len.append(self.visual_ids[0])
 
             # shape : NCHW
-            img = self.visual_ids
-            # img_len = [i.shape[1]*i.shape[2]*i.shape[3] for i in img]
-            # img_width_len = max([i.shape[3] for i in img])
-            # img_height_len = max([i.shape[2] for i in img])
-            # for i in range(len(img)):
-            #     img[i] = img[i][:, :, :img_height_len, :img_width_len]
-            img_batched_tensor = torch.stack(img)
-            img_batched_tensor = torch.cat(
-                [t.unsqueeze(0) for t in img], dim=0)
+            # img = self.visual_ids
+            # for f_visual in img:
+            #     img_len.append(f_visual.shape[0])
+
+            # img_batched_tensor = torch.stack(img)
+            # img_batched_tensor = torch.cat([t.unsqueeze(0) for t in img], dim=0)
+            
+            # img = img[:,:max(img_len)]
 
             # make input mask
             mask = torch.tensor(get_mask(src, max_len=max_input_len))
@@ -205,8 +201,10 @@ class OurDataset(Dataset):
                 pad_sents(decoder_ids, 1, max_len=max_output_len)[0])
             label_ids = torch.tensor(
                 pad_sents(label_ids, -100, max_len=max_output_len)[0])
-            # return src_ids, decoder_ids, mask, label_ids, torch.tensor(img), img_len
-            return src_ids, decoder_ids, mask, label_ids, img_batched_tensor, img_len
+            
+            # img_batched_tensor = torch.stack(img)
+            # img_batched_tensor = torch.cat([t.unsqueeze(0) for t in img], dim=0)
+            return src_ids, decoder_ids, mask, label_ids, torch.tensor(img), img_len
 
         elif self.args.model == 'text_only_t5':
             # rebuild the raw text and truncate to max length

@@ -697,7 +697,7 @@ class BartEncoder(BartPretrainedModel):
             #     d_model=2048, num_layers=4, num_heads=8, dim_feedforward=2048)
             self.img_transformer, _ = img_clip.load(None, 'ViT-B/32',
                                                     device="cpu", jit=False,
-                                                    T=8,
+                                                    T=256,
                                                     droppath=0,
                                                     use_checkpoint=False,
                                                     use_cache=True,

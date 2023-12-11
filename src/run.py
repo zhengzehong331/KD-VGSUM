@@ -76,7 +76,9 @@ if __name__ == '__main__':
                         help='the learning rate for visual guidance part will times this number')
     parser.add_argument('-input_size', type=int, default=224,
                         help='input size')
-
+    parser.add_argument('-frame_interval', type=int, default=16,
+                        help='input video frame_interval')
+    
     # About cross-modal attention and fusion
     parser.add_argument('-use_img_trans', action='store_true',
                         help='whether or not to use VTF')

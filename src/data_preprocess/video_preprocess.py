@@ -210,38 +210,41 @@ class SampleFrames:
 
     def _get_train_clips(self, num_frames):
         """在训练阶段下获取clip偏移。
-
-
         它将计算所选帧的平均间隔、并在 [0, avg_interval] 之间的偏移范围内随机移动它们。如果帧的总数小于 clips_num 或 原始帧的长度，它将返回所有零索引。
-
         Args:
-            num_frames (int): Total number of frame in the video.
-
+            num_frames (int): 总帧数
         Returns:
             np.ndarray: 生成采样帧的索引
             例如：需要获取8个clip的索引，那么输出为array([ 169,  546,  837, 1246, 1407, 1761, 2232, 2538])这样一个np.ndarray
         """
+        clip_offsets = []
         # 每个采样输出片段的帧数 x 采样帧的间距
         # 传入参数为clip_len=1,frame_intervala=1说明没有设置帧间距，片段长度为1，即一帧为一个片段
-        ori_clip_len = self.clip_len * self.frame_interval
-        # 计算平均间隔，
-        # 例如：共有2617帧，传入的总片段为8，所以共有8个采样片段，那么平均间隔为327
-        avg_interval = (num_frames - ori_clip_len + 1) // self.num_clips
+        # ori_clip_len = self.clip_len * self.frame_interval
+        # # 计算平均间隔，
+        
+        # # 例如：共有2617帧，传入的总片段为8，所以共有8个采样片段，那么平均间隔为327
+        # avg_interval = 8
 
-        if avg_interval > 0:
-            # 获取碎解采样
-            base_offsets = np.arange(self.num_clips) * avg_interval
-            clip_offsets = base_offsets + np.random.randint(
-                avg_interval, size=self.num_clips)
-        elif num_frames > max(self.num_clips, ori_clip_len):
-            clip_offsets = np.sort(
-                np.random.randint(
-                    num_frames - ori_clip_len + 1, size=self.num_clips))
-        elif avg_interval == 0:
-            ratio = (num_frames - ori_clip_len + 1.0) / self.num_clips
-            clip_offsets = np.around(np.arange(self.num_clips) * ratio)
-        else:
-            clip_offsets = np.zeros((self.num_clips, ), dtype=np.int)
+        # if avg_interval > 0:
+        #     # 获取碎解采样
+        #     base_offsets = np.arange(self.num_clips) * avg_interval
+        #     clip_offsets = base_offsets + np.random.randint(
+        #         avg_interval, size=self.num_clips)
+        # elif num_frames > max(self.num_clips, ori_clip_len):
+        #     clip_offsets = np.sort(
+        #         np.random.randint(
+        #             num_frames - ori_clip_len + 1, size=self.num_clips))
+        # elif avg_interval == 0:
+        #     ratio = (num_frames - ori_clip_len + 1.0) / self.num_clips
+        #     clip_offsets = np.around(np.arange(self.num_clips) * ratio)
+        # else:
+        #     clip_offsets = np.zeros((self.num_clips, ), dtype=np.int)
+
+        begin_t = 1
+        end_t = num_frames
+        step = self.frame_interval
+        clip_offsets = np.arange(begin_t,end_t,step)
 
         return clip_offsets
 
@@ -279,15 +282,21 @@ class SampleFrames:
         Returns:
             np.ndarray: Sampled frame indices in test mode.
         """
-        ori_clip_len = self.clip_len * self.frame_interval
-        avg_interval = (num_frames - ori_clip_len + 1) / float(self.num_clips)
-        if num_frames > ori_clip_len - 1:
-            base_offsets = np.arange(self.num_clips) * avg_interval
-            clip_offsets = (base_offsets + avg_interval / 2.0).astype(np.int)
-            if self.twice_sample:
-                clip_offsets = np.concatenate([clip_offsets, base_offsets])
-        else:
-            clip_offsets = np.zeros((self.num_clips, ), dtype=np.int)
+        # ori_clip_len = self.clip_len * self.frame_interval
+        # avg_interval = (num_frames - ori_clip_len + 1) / float(self.num_clips)
+        # if num_frames > ori_clip_len - 1:
+        #     base_offsets = np.arange(self.num_clips) * avg_interval
+        #     clip_offsets = (base_offsets + avg_interval / 2.0).astype(np.int)
+        #     if self.twice_sample:
+        #         clip_offsets = np.concatenate([clip_offsets, base_offsets])
+        # else:
+        #     clip_offsets = np.zeros((self.num_clips, ), dtype=np.int)
+
+        begin_t = 1
+        end_t = num_frames
+        step = self.frame_interval
+        clip_offsets = np.arange(begin_t,end_t,step)
+        
         return clip_offsets
 
     def get_seq_frames(self, num_frames):
