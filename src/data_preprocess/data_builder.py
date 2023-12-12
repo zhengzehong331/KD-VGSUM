@@ -201,9 +201,6 @@ class OurDataset(Dataset):
                 pad_sents(decoder_ids, 1, max_len=max_output_len)[0])
             label_ids = torch.tensor(
                 pad_sents(label_ids, -100, max_len=max_output_len)[0])
-            
-            # img_batched_tensor = torch.stack(img)
-            # img_batched_tensor = torch.cat([t.unsqueeze(0) for t in img], dim=0)
             return src_ids, decoder_ids, mask, label_ids, torch.tensor(img), img_len
 
         elif self.args.model == 'text_only_t5':
